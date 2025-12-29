@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>喵咪神社 - 訂閱制（月付）</title>
 
+  <!-- ✅ PWA -->
+  <link rel="manifest" href="/Maneki-Shrine/manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+
+  <!-- ✅ iOS 加入主畫面 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="喵咪神社" />
+  <link rel="apple-touch-icon" href="/Maneki-Shrine/icons/icon-192.png" />
+
+
   <style>
     :root { --gold: #d4af37; --bg: #0f0c29; --glass: rgba(255,255,255,0.1); --danger:#ff4757; --ok:#27ae60; }
     * { box-sizing: border-box; }
@@ -1028,5 +1039,15 @@ if (topStatus){
       document.addEventListener("DOMContentLoaded", init);
     })();
   </script>
+
+  <!-- ✅ PWA Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/Maneki-Shrine/sw.js");
+      });
+    }
+  </script>
+
 </body>
 </html>
