@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>喵咪神社 - 訂閱制（月付）</title>
+
+  <style>
+    :root { --gold: #d4af37; --bg: #0f0c29; --glass: rgba(255,255,255,0.1); --danger:#ff4757; --ok:#27ae60; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100vh; font-family: 'PingFang TC', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; scroll-behavior: smooth; }
+
+    .page { display: none; min-height: 100vh; width: 100%; flex-direction: column; align-items: center; justify-content: center; position: absolute; padding: 20px; }
+    .page.active { display: flex; animation: fadeIn .45s forwards; }
+
+    .menu-btn {
+      background: var(--glass); border: 2px solid var(--gold); color: white;
+      padding: 15px; margin: 10px; border-radius: 50px; font-size: 18px; cursor: pointer; width: 280px; transition: .25s;
+    }
+    .menu-btn:active { transform: scale(.96); background: rgba(212, 175, 55, 0.18); }
+    .menu-btn.danger { border-color: var(--danger); color: var(--danger); }
+    .menu-btn.ok { border-color: var(--ok); color: var(--ok); }
+    .menu-btn.small { width: auto; padding: 10px 14px; font-size: 14px; }
+
+    .back-home { position: fixed; top: 20px; left: 20px; background: rgba(0,0,0,0.6); border: 1px solid var(--gold); color: var(--gold); padding: 8px 15px; border-radius: 20px; cursor: pointer; z-index: 999; display:none; }
+    #music-toggle { position: fixed; top: 20px; right: 20px; background: var(--glass); border: 1px solid var(--gold); color: var(--gold); border-radius: 50%; width: 45px; height: 45px; z-index: 999; cursor: pointer; }
+
+    .top-status{
+      position: fixed; top: 76px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(212,175,55,0.55);
+      border-radius: 999px; padding: 8px 12px; display: flex; align-items: center; gap: 10px;
+      z-index: 999; backdrop-filter: blur(6px); max-width: calc(100vw - 24px);
+    }
+    .pill { display:flex; align-items:center; gap:8px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+    .pill b { color: var(--gold); }
+
+    .badge {
+      font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.25);
+      white-space: nowrap; min-width: 112px; text-align: center;
+    }
+    .badge.inactive { color:#fff; background: rgba(255,255,255,0.08); }
+    .badge.active { color:#0f0c29; background: var(--gold); border-color: var(--gold); font-weight: 800; }
+
+    .info-box { background: var(--glass); border-left: 4px solid var(--gold); padding: 15px; margin-bottom: 12px; border-radius: 10px; text-align: left; width: 100%; max-width: 520px; backdrop-filter: blur(6px); }
+    .info-title { color: var(--gold); font-weight: 800; }
+    .muted { opacity: .85; }
+    .divider { height: 1px; width: 100%; max-width: 520px; background: rgba(255,255,255,0.12); margin: 14px 0; }
+
+    .mask {
+      position: relative; border-radius: 12px; border: 1px dashed rgba(212,175,55,0.7);
+      background: rgba(0,0,0,0.35); padding: 14px;
+    }
+    .mask h4 { margin: 0 0 6px 0; color: var(--gold); }
+    .mask p { margin: 6px 0; }
+    .mask .blurred { filter: blur(6px); user-select: none; pointer-events: none; opacity: 0.65; }
+    .mask .cta-row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+
+    .card-container { perspective: 1000px; width: 160px; height: 280px; cursor: pointer; margin: 16px; }
+    .card { position: relative; width: 100%; height: 100%; transition: transform .85s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-style: preserve-3d; }
+    .card.is-flipped { transform: rotateY(180deg); }
+    .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; border: 3px solid var(--gold); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(212,175,55,0.28); }
+    .card-back { background: #1a1a2e; background-image: radial-gradient(var(--gold) 1px, transparent 1px); background-size: 20px 20px; }
+    .card-front { background: #fff; color: #222; transform: rotateY(180deg); padding: 15px; text-align: center; }
+    .reversed-img { transform: rotateY(180deg) rotateZ(180deg) !important; }
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; margin-bottom: 10px; font-weight: 800; color: #fff; }
+
+    .jiao-group { display: flex; gap: 20px; margin: 30px; }
+    .jiao { width: 80px; height: 130px; background: #8e0000; border-radius: 80px 10px 80px 10px; border: 2px solid #5a0000; transition: 0.5s; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); }
+    .flat { background: #d35400; transform: rotateX(0deg); border-radius: 80px 10px 80px 10px; }
+    .curved { transform: rotateX(180deg); border-radius: 10px 80px 10px 80px; }
+    .rolling { animation: roll 0.6s infinite; }
+
+    .villain-stage { position: relative; height: 300px; width: 300px; display: flex; justify-content: center; align-items: flex-end; }
+    #pMan { font-size: 120px; transition: 0.1s; z-index: 1; }
+    #slipper { position: absolute; font-size: 80px; top: 0; right: 0; transform: rotate(-45deg); opacity: 0; transition: 0.1s; z-index: 2; pointer-events: none; }
+    .slipper-hit { animation: slap .22s ease-in-out; opacity: 1 !important; }
+
+    .wa-float {
+      position: fixed; bottom: 25px; right: 20px; z-index: 10000;
+      text-decoration: none; display: flex; align-items: center;
+      background: rgba(15, 12, 41, 0.92); border: 1.5px solid var(--gold);
+      padding: 6px 15px 6px 6px; border-radius: 50px 20px 20px 50px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(5px); transition: 0.3s;
+    }
+    .wa-float:active { transform: scale(0.94); }
+    .wa-icon-bg { background: #25D366; width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+    .wa-text { margin-left: 10px; display: flex; flex-direction: column; }
+    .wa-text .title { color: var(--gold); font-size: 13px; font-weight: 800; }
+    .wa-text .status { color: #25D366; font-size: 10px; animation: adBlink 1.5s infinite; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 20000;
+      display: none; align-items: center; justify-content: center; padding: 18px;
+    }
+    .modal-backdrop.show { display:flex; }
+    .modal {
+      width: 100%; max-width: 560px;
+      background: rgba(15, 12, 41, 0.92);
+      border: 1px solid rgba(212,175,55,0.6);
+      border-radius: 18px; padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      backdrop-filter: blur(10px);
+    }
+    .modal h3 { margin: 0 0 6px 0; color: var(--gold); letter-spacing: 1px; }
+    .modal p { margin: 6px 0; }
+    .modal .row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .modal input {
+      width: 100%; padding: 12px 12px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08);
+      color: #fff; outline: none;
+    }
+    .modal .note { font-size: 12px; opacity: 0.85; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes roll { 0% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-50px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
+    @keyframes slap {
+      0% { transform: translate(50px, -50px) rotate(-45deg); opacity: 0; }
+      50% { transform: translate(-40px, 40px) rotate(-90deg); opacity: 1; }
+      100% { transform: translate(-60px, 60px) rotate(-100deg); opacity: 0; }
+    }
+    @keyframes adBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+
+  <!-- Audio -->
+  <audio id="bgm" loop><source src="https://cdn.pixabay.com/audio/2022/03/15/audio_731309f481.mp3" type="audio/mpeg"></audio>
+  <audio id="flipSound"><source src="https://audio-previews.elements.envatousercontent.com/files/282569300/preview.mp3" type="audio/mpeg"></audio>
+  <audio id="bellSound"><source src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" type="audio/mpeg"></audio>
+  <audio id="woodSound"><source src="https://audio-previews.elements.envatousercontent.com/files/637529492/preview.mp3" type="audio/mpeg"></audio>
+  <audio id="hitSound"><source src="https://audio-previews.elements.envatousercontent.com/files/458187569/preview.mp3" type="audio/mpeg"></audio>
+
+  <button id="music-toggle" title="音樂">🔊</button>
+  <button id="homeBtn" class="back-home">← 返回神社</button>
+
+  <!-- Top status -->
+  <div class="top-status">
+    <div class="pill">
+      <b>訂閱狀態</b>
+      <span id="subBadge" class="badge inactive">未啟用</span>
+    </div>
+    <div class="pill" style="max-width: 52vw;">
+      <b>今日安定語</b>
+      <span id="dailyAffirmation" class="muted" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+    </div>
+    <button class="menu-btn small ok" id="subscribeBtn">立即訂閱</button>
+  </div>
+
+  <!-- WhatsApp CTA -->
+  <a id="waLink" href="https://wa.me/60166262464?text=您好，我剛在喵咪神社抽了喵咪塔羅/靈籤，想請老師做更深入的整理與解讀。" target="_blank" class="wa-float">
+    <div class="wa-icon-bg">
+      <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="22" height="22" alt="WA">
+    </div>
+    <div class="wa-text">
+      <span class="title">真人深度解惑</span>
+      <span class="status">● 今日名額有限</span>
+    </div>
+  </a>
+
+  <!-- Home -->
+  <div id="home-page" class="page active">
+    <h1 style="color:var(--gold); letter-spacing: 5px; margin-bottom: 8px;">🐾 喵咪神社 🐾</h1>
+
+    <div class="info-box" style="text-align:center;">
+      <div style="font-size: 14px; opacity:.9;">你今天不需要急著有答案。</div>
+      <div style="margin-top: 8px; font-size: 18px; font-weight:800; color:var(--gold);" id="dailyEnergyTitle">今日能量</div>
+      <div style="margin-top: 6px; font-size: 14px; opacity:.92;" id="dailyEnergyBody"></div>
+      <div class="divider"></div>
+      <div style="font-size: 13px; opacity:.9;">
+        「進階提示」需要訂閱啟用。付費後輸入一次性訂閱碼即可解鎖 30 天（到期可續）。
+      </div>
+    </div>
+
+    <button class="menu-btn" data-goto="tarot-page">🐾 22張喵咪塔羅抽牌</button>
+    <button class="menu-btn" data-goto="shrine-page">⛩️ 喵咪神社靈籤</button>
+    <button class="menu-btn" data-goto="divine-page">🐾 喵咪擲筊問事</button>
+    <button class="menu-btn" data-goto="villain-page">🐾 喵咪宣洩打小人</button>
+
+    <div style="height:12px;"></div>
+    <button class="menu-btn ok" id="subscribeBtn2">🌙 每月訂閱解鎖進階提示</button>
+  </div>
+
+  <!-- Tarot -->
+  <div id="tarot-page" class="page">
+    <h2 style="color:var(--gold); margin-bottom: 6px;">喵咪塔羅</h2>
+    <div class="muted" style="max-width:520px; text-align:center; font-size: 13px; margin-bottom: 8px;">
+      點擊卡牌抽一張喵咪塔羅。訂閱啟用後可解鎖「進階心理提示」。
+    </div>
+
+    <div class="card-container" id="tarotTapArea" title="點擊抽牌">
+      <div class="card" id="tarotCard">
+        <div class="card-face card-back"></div>
+        <div class="card-face card-front">
+          <h3 id="cardName" style="margin: 0;">牌名</h3>
+          <div id="cardStatusTag" class="tag"></div>
+          <div style="font-size: 80px;">🐱</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tarot-result" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+      <div class="info-box"><b class="info-title">❤️ 愛情：</b><span id="love-text"></span></div>
+      <div class="info-box"><b class="info-title">💼 事業：</b><span id="work-text"></span></div>
+      <div class="info-box"><b class="info-title">🌟 運勢：</b><span id="fortune-text"></span></div>
+
+      <div class="info-box">
+        <div class="mask">
+          <h4>🔒 進階提示（訂閱解鎖）</h4>
+          <div id="tarotPremium" class="blurred">
+            <p><b>你的真正卡點：</b> 你不是缺答案，而是缺「允許自己慢下來」的安全感。</p>
+            <p><b>最該留意的訊號：</b> 你正在反覆驗證一件事，因為你很怕再次失望。</p>
+            <p><b>今日建議：</b> 把「現在就要決定」改成「我先看清楚再決定」。</p>
+          </div>
+          <p class="muted" id="premiumHint">訂閱啟用後可解鎖 30 天。關鍵缺口仍保留：要更準的行動與時間點，建議真人整合。</p>
+          <div class="cta-row">
+            <button class="menu-btn small ok" id="openSubModalBtn1">立即訂閱</button>
+            <button class="menu-btn small" id="deepConsultBtn">真人深度解讀</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="menu-btn" id="resetTarotBtn">重新占卜</button>
+    </div>
+  </div>
+
+  <!-- Shrine -->
+  <div id="shrine-page" class="page" style="background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=1200&q=80'); background-size: cover;">
+    <div style="background: rgba(0,0,0,0.72); padding: 26px; border-radius: 20px; border: 1px solid var(--gold); width: min(92vw, 560px);">
+      <h2 style="color:var(--gold); margin-top:0;">⛩️ 喵咪神社靈籤</h2>
+
+      <div class="info-box" style="max-width:none;">
+        <b class="info-title">今日能量提示：</b>
+        <span id="shrineEnergyHint"></span>
+      </div>
+
+      <button class="menu-btn" id="drawOmikujiBtn">誠心抽籤</button>
+
+      <div id="omiResult" style="display:none; background: #fff; color: #333; padding: 20px; margin-top: 20px; border-left: 8px solid #d35400; text-align: left; border-radius: 8px;">
+        <b id="omiGrade" style="font-size: 24px;">上上籤</b>
+        <p id="omiDesc"></p>
+
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,0.25);">
+          <div class="mask" style="background: rgba(0,0,0,0.06); border-color: rgba(212,175,55,0.7);">
+            <h4 style="color:#b07a00;">🔒 進階解讀（訂閱解鎖）</h4>
+            <div id="omiPremium" class="blurred">
+              <p><b>你該「守」的：</b> 別急著證明自己，你越穩，越有人靠近你。</p>
+              <p><b>你該「放」的：</b> 把對結果的執著，換成對節奏的信任。</p>
+            </div>
+            <p class="note" id="omiHint">訂閱啟用後可解鎖 30 天。若要更具體策略，建議真人整合。</p>
+            <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+              <button class="menu-btn small ok" id="openSubModalBtn2">立即訂閱</button>
+              <button class="menu-btn small" id="omiDeepBtn">真人深度解讀</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Divine -->
+  <div id="divine-page" class="page">
+    <h2 style="color:var(--gold)">🐾 喵咪擲筊</h2>
+    <div class="jiao-group">
+      <div id="j1" class="jiao curved"></div>
+      <div id="j2" class="jiao curved"></div>
+    </div>
+    <button class="menu-btn" id="jBtn">擲筊請示</button>
+    <h2 id="jResultText" style="margin-top:20px;"></h2>
+
+    <div class="info-box" style="margin-top: 14px;">
+      <b class="info-title">提醒：</b>
+      <span class="muted">擲筊適合「是/否」問題；若你問的是「為什麼」，通常需要真人整理脈絡。</span>
+      <div style="margin-top:10px;">
+        <button class="menu-btn small" id="divineDeepBtn">真人深度解讀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Villain -->
+  <div id="villain-page" class="page">
+    <h2 style="color:var(--danger)">🐾 打小人（貓掌版）</h2>
+    <div class="villain-stage">
+      <div id="slipper">👡</div>
+      <div id="pMan">🧍</div>
+    </div>
+    <h3 id="hitMsg" style="height:30px; color:var(--danger); margin-top: 20px;">點擊下方按鈕開始拍走煩惱</h3>
+    <button class="menu-btn danger" id="hitBtn">用力拍！</button>
+
+    <div class="info-box" style="margin-top: 14px;">
+      <b class="info-title">收尾：</b>
+      <span class="muted">宣洩後就停，讓身體回到安全感。你不需要靠憤怒才能保護自己。</span>
+    </div>
+  </div>
+
+  <!-- Subscribe modal -->
+  <div class="modal-backdrop" id="subModal">
+    <div class="modal">
+      <h3>🌙 每月訂閱（解鎖 30 天）</h3>
+      <p class="muted">
+        付款後你會收到一組 <b>一次性訂閱碼</b>。輸入後立即失效（避免轉傳），並解鎖 30 天，到期可續。
+      </p>
+
+      <div class="info-box" style="max-width:none;">
+        <b class="info-title">解鎖內容：</b>
+        <div class="muted" style="margin-top:6px;">
+          ✅ 每日安定語 + 今日能量（節律）<br/>
+          ✅ 塔羅 / 籤詩的「進階心理提示」<br/>
+          ⚠️ 關鍵缺口仍保留：要更準的行動與時間點，建議真人整合
+        </div>
+      </div>
+
+      <p class="note">
+        付款/索取訂閱碼連結：<br/>
+        <span class="mono" id="payLinkText">（點「去付款」會跳到 WhatsApp，傳訊索取一次性訂閱碼）</span>
+      </p>
+
+      <div class="row">
+        <button class="menu-btn ok" id="goPayBtn">去付款（月付）</button>
+        <button class="menu-btn" id="closeSubBtn">稍後</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="note">輸入一次性訂閱碼（付款成功後取得）</p>
+      <input id="subCodeInput" placeholder="輸入訂閱碼，例如 SOUL-7K9W2" />
+      <div class="row">
+        <button class="menu-btn ok" id="activateSubBtn">啟用 / 續費</button>
+        <button class="menu-btn danger" id="cancelSubBtn">取消（本機）</button>
+      </div>
+      <p class="note" id="subMsg" style="margin-top:10px;"></p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /**
+       * 訂閱系統：純前端（本機一次性訂閱碼）
+       * - paymentLink：使用者點擊後會跳 WhatsApp，向你索取一次性訂閱碼
+       */
+      const CONFIG = {
+        paymentLink:
+          "https://wa.me/60166262464?text=您好，我想訂閱喵咪神社（月付）。我已付款/準備付款，請給我一次性訂閱碼。"
+      };
+
+      const $ = (s) => document.querySelector(s);
+      const $$ = (s) => Array.from(document.querySelectorAll(s));
+      const rand = (n) => Math.floor(Math.random() * n);
+      const pickOne = (arr) => arr[rand(arr.length)];
+      const todayKey = () => new Date().toISOString().slice(0,10);
+
+      const safePlay = (audioEl, { restart = true } = {}) => {
+        if (!audioEl) return;
+        try {
+          if (restart) audioEl.currentTime = 0;
+          const p = audioEl.play();
+          if (p && typeof p.catch === "function") p.catch(() => {});
+        } catch (_) {}
+      };
+
+      const dailyAffirmations = [
+        "今天先不用急著有答案，喵。",
+        "慢一點沒關係，你正在回到安全感。",
+        "你可以先休息，再前進。",
+        "先把心放軟，事情會更清楚。",
+        "你已經做得夠多了，剩下交給時間。"
+      ];
+      const dailyEnergies = [
+        { title: "今日喵能量：收斂與沉澱", body: "適合整理、收尾、靜觀。不宜硬推進，先把節奏穩住。" },
+        { title: "今日喵能量：溫柔推進", body: "可以行動，但不要逞強。用小步前進會更有效。" },
+        { title: "今日喵能量：界線與保護", body: "把注意力收回來。不是拒絕世界，而是保護自己。" },
+        { title: "今日喵能量：清理與斷捨離", body: "該放掉的就放掉。越清爽，越能看見真正重要的。" },
+        { title: "今日喵能量：信任與復原", body: "今天適合修復。先照顧自己，答案自然會靠近你。" }
+      ];
+
+      const storage = {
+        getExpireAt() {
+          const n = Number(localStorage.getItem("sub_expire_at") || "0");
+          return Number.isFinite(n) ? n : 0;
+        },
+        setExpireAt(ts) {
+          localStorage.setItem("sub_expire_at", String(ts));
+        },
+        clearExpire() {
+          localStorage.removeItem("sub_expire_at");
+        },
+        getDaily(seedKey, poolLength) {
+          const k = `${seedKey}_${todayKey()}`;
+          const existed = localStorage.getItem(k);
+          if (existed !== null) return Number(existed);
+          const d = todayKey();
+          let h = 0;
+          for (let i = 0; i < d.length; i++) h = (h * 31 + d.charCodeAt(i)) >>> 0;
+          const idx = h % poolLength;
+          localStorage.setItem(k, String(idx));
+          return idx;
+        }
+      };
+
+
+
+      /* ===============================
+         ✅ 人工發碼（純前端｜本機一次性碼）
+         - 付款後由你人工提供一次性碼
+         - 防重複：僅限同一台裝置（localStorage）
+      ================================ */
+      const SUB_DAYS = 30;
+      const GM_KEY = "GM-SUPER-KEY-888";
+      const USED_KEY = "used_codes_v1";
+      const CODE_LIST = [
+        "SOUL-7K9W2", "SOUL-4G8N1", "SOUL-2B5C9", "SOUL-9X1Z4", "SOUL-6S3P7",
+        "SOUL-8J2K5", "SOUL-3M9R8", "SOUL-5V4L2", "SOUL-1F7H3", "SOUL-7D6X9",
+        "SOUL-4L8P1", "SOUL-2Z3S5", "SOUL-8W5K2", "SOUL-9V1N7", "SOUL-6T4R8",
+        "SOUL-3B9L1", "SOUL-5H2F6", "SOUL-1K7Z3", "SOUL-7R4M8", "SOUL-4D2K5",
+        "SOUL-9W1X7", "SOUL-2G8L4", "SOUL-6C3F9", "SOUL-5V7R2", "SOUL-1N4Z8",
+        "SOUL-3R1X8", "SOUL-6H9L3", "SOUL-8F2M5", "SOUL-4P7K9", "SOUL-1V5R2",
+        "SOUL-9D4G6", "SOUL-7B1W8", "SOUL-2S6T3", "SOUL-5N8K2", "SOUL-3W4V7",
+        "SOUL-6G2M9", "SOUL-9Z1R4", "SOUL-8X7L5", "SOUL-4C2P8", "SOUL-1M5K3",
+        "SOUL-7S8V2", "SOUL-2N4G6", "SOUL-5W1M9", "SOUL-9H3L2", "SOUL-6Z7S1",
+        "SOUL-3P5K8", "SOUL-8T2N4", "SOUL-1G9M3", "SOUL-4V6P8", "SOUL-7M1D5",
+        "SOUL-9V2P4", "SOUL-1T8Y6", "SOUL-7Z4X2", "SOUL-3S9L8", "SOUL-6K2M1",
+        "SOUL-8C5N9", "SOUL-4J7X3", "SOUL-1H9P2", "SOUL-9M3R7", "SOUL-5T2L4",
+        "SOUL-7K8F1", "SOUL-2D4V9", "SOUL-6G3M1", "SOUL-4S9W2", "SOUL-8R2L7",
+        "SOUL-3V1H4", "SOUL-5Z7P9", "SOUL-1K8X3", "SOUL-9B4F6", "SOUL-7G2M9",
+        "SOUL-4R1W7", "SOUL-2L5K3", "SOUL-8H7V2", "SOUL-6X3L1", "SOUL-1N9P8",
+        "SOUL-5M7Q1", "SOUL-8D3K9", "SOUL-2W6P5", "SOUL-4G1V7", "SOUL-9F8R3",
+        "SOUL-7L2H4", "SOUL-1X6Z8", "SOUL-3K4M9", "SOUL-8B7S2", "SOUL-5N1W6",
+        "SOUL-2J9P3", "SOUL-6V4R8", "SOUL-4Z5K7", "SOUL-9P3F2", "SOUL-7X1D6",
+        "SOUL-2M8K4", "SOUL-5G4N1", "SOUL-1S7R9", "SOUL-8V2L5", "SOUL-3K6Z4",
+        "SOUL-6D8P1", "SOUL-9T4M2", "SOUL-5F1R7", "SOUL-7S2K4", "SOUL-4W8G3"
+      ];
+      const CODE_SET = new Set(CODE_LIST);
+
+      const loadUsedCodes = () => {
+        try {
+          const raw = localStorage.getItem(USED_KEY) || "[]";
+          const arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) return new Set();
+          return new Set(arr.map((x) => String(x).toUpperCase()));
+        } catch (_) {
+          return new Set();
+        }
+      };
+
+      const saveUsedCodes = (set) => {
+        try {
+          localStorage.setItem(USED_KEY, JSON.stringify(Array.from(set)));
+        } catch (_) {}
+      };
+
+      function redeemCodeLocal(inputCode) {
+        const c = String(inputCode || "").trim().toUpperCase();
+        if (!c) throw new Error("請輸入訂閱碼");
+        if (c === GM_KEY) return { days: SUB_DAYS, gm: true };
+
+        if (!CODE_SET.has(c)) throw new Error("訂閱碼無效");
+
+        const used = loadUsedCodes();
+        if (used.has(c)) throw new Error("此碼已使用過（本機）");
+        used.add(c);
+        saveUsedCodes(used);
+
+        return { days: SUB_DAYS, gm: false };
+      }
+
+      function extendSub(days) {
+        const now = Date.now();
+        const cur = storage.getExpireAt();
+        const base = cur > now ? cur : now;
+        const next = base + days * 86400000;
+        storage.setExpireAt(next);
+        return next;
+      }
+
+      const state = {
+        musicOn: true,
+        audioUnlocked: false,
+        currentPageId: "home-page",
+        tarotFlipped: false,
+        tarotLast: null,
+      };
+
+      const dom = {
+        pages: $$(".page"),
+        homeBtn: $("#homeBtn"),
+        musicBtn: $("#music-toggle"),
+
+        subBadge: $("#subBadge"),
+        subscribeBtn: $("#subscribeBtn"),
+        subscribeBtn2: $("#subscribeBtn2"),
+
+        dailyAffirmation: $("#dailyAffirmation"),
+        dailyEnergyTitle: $("#dailyEnergyTitle"),
+        dailyEnergyBody: $("#dailyEnergyBody"),
+        shrineEnergyHint: $("#shrineEnergyHint"),
+
+        bgm: $("#bgm"),
+        flipSound: $("#flipSound"),
+        bellSound: $("#bellSound"),
+        woodSound: $("#woodSound"),
+        hitSound: $("#hitSound"),
+
+        tarotTapArea: $("#tarotTapArea"),
+        tarotCard: $("#tarotCard"),
+        cardFront: $(".card-front"),
+        cardName: $("#cardName"),
+        cardTag: $("#cardStatusTag"),
+        tarotResult: $("#tarot-result"),
+        loveText: $("#love-text"),
+        workText: $("#work-text"),
+        fortuneText: $("#fortune-text"),
+        tarotPremium: $("#tarotPremium"),
+        premiumHint: $("#premiumHint"),
+        openSubModalBtn1: $("#openSubModalBtn1"),
+        deepConsultBtn: $("#deepConsultBtn"),
+        resetTarotBtn: $("#resetTarotBtn"),
+
+        drawOmikujiBtn: $("#drawOmikujiBtn"),
+        omiResult: $("#omiResult"),
+        omiGrade: $("#omiGrade"),
+        omiDesc: $("#omiDesc"),
+        omiPremium: $("#omiPremium"),
+        openSubModalBtn2: $("#openSubModalBtn2"),
+        omiDeepBtn: $("#omiDeepBtn"),
+
+        jBtn: $("#jBtn"),
+        j1: $("#j1"),
+        j2: $("#j2"),
+        jResultText: $("#jResultText"),
+        divineDeepBtn: $("#divineDeepBtn"),
+
+        hitBtn: $("#hitBtn"),
+        slipper: $("#slipper"),
+        man: $("#pMan"),
+        hitMsg: $("#hitMsg"),
+
+        subModal: $("#subModal"),
+        payLinkText: $("#payLinkText"),
+        goPayBtn: $("#goPayBtn"),
+        closeSubBtn: $("#closeSubBtn"),
+        subCodeInput: $("#subCodeInput"),
+        activateSubBtn: $("#activateSubBtn"),
+        cancelSubBtn: $("#cancelSubBtn"),
+        subMsg: $("#subMsg"),
+      };
+
+      const unlockAudioOnce = () => {
+        if (state.audioUnlocked) return;
+        state.audioUnlocked = true;
+
+        [dom.bgm, dom.flipSound, dom.bellSound, dom.woodSound, dom.hitSound].forEach((a) => {
+          if (!a) return;
+          a.volume = a === dom.bgm ? 0.2 : 1;
+          safePlay(a, { restart: false });
+          a.pause();
+          a.currentTime = 0;
+        });
+
+        if (state.musicOn) startBgm();
+      };
+      const startBgm = () => { dom.bgm.volume = 0.2; safePlay(dom.bgm, { restart: false }); };
+      const stopBgm = () => dom.bgm.pause();
+
+      const isSubscribed = () => {
+        const expireAt = storage.getExpireAt();
+        return expireAt && Date.now() < expireAt;
+      };
+
+      const formatDate = (ts) => {
+        const d = new Date(ts);
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,"0");
+        const day = String(d.getDate()).padStart(2,"0");
+        return `${y}-${m}-${day}`;
+      };
+
+      const renderSubUI = () => {
+        const active = isSubscribed();
+        const expireAt = storage.getExpireAt();
+
+        dom.subBadge.classList.toggle("active", active);
+        dom.subBadge.classList.toggle("inactive", !active);
+        dom.subBadge.textContent = active ? `有效至 ${formatDate(expireAt)}` : "未啟用";
+
+        dom.subscribeBtn.textContent = active ? "續費/延長" : "立即訂閱";
+        dom.subscribeBtn2.textContent = active ? "🌙 續費延長" : "🌙 每月訂閱解鎖進階提示";
+
+        dom.tarotPremium.classList.toggle("blurred", !active);
+        dom.omiPremium.classList.toggle("blurred", !active);
+
+        dom.premiumHint.textContent = active
+          ? "你已解鎖進階提示。若你要更準的行動與時間點，建議真人整合。"
+          : "訂閱啟用後可解鎖 30 天。關鍵缺口仍保留：要更準的行動與時間點，建議真人整合。";
+      };
+
+      const renderDaily = () => {
+        const aIdx = storage.getDaily("daily_aff", dailyAffirmations.length);
+        const eIdx = storage.getDaily("daily_energy", dailyEnergies.length);
+        dom.dailyAffirmation.textContent = dailyAffirmations[aIdx];
+        const energy = dailyEnergies[eIdx];
+        dom.dailyEnergyTitle.textContent = energy.title;
+        dom.dailyEnergyBody.textContent = energy.body;
+        dom.shrineEnergyHint.textContent = `${energy.title}｜${energy.body}`;
+      };
+
+      const goTo = (id) => {
+        state.currentPageId = id;
+        dom.pages.forEach(p => p.classList.remove("active"));
+        const page = document.getElementById(id);
+        if (page) page.classList.add("active");
+        dom.homeBtn.style.display = id === "home-page" ? "none" : "block";
+        if (state.musicOn && state.audioUnlocked) startBgm();
+      };
+
+      const openSubModal = () => {
+        dom.subModal.classList.add("show");
+        dom.subMsg.textContent = "";
+        dom.subCodeInput.value = "";
+        dom.payLinkText.textContent = CONFIG.paymentLink;
+      };
+      const closeSubModal = () => dom.subModal.classList.remove("show");
+        return data; // { ok:true, expireAt, days }
+      }
+
+      
+      async function activateSubscriptionByCode() {
+        const code = (dom.subCodeInput.value || "").trim();
+        if (!code) { dom.subMsg.textContent = "請輸入訂閱碼。"; return; }
+
+        dom.activateSubBtn.disabled = true;
+        dom.subMsg.textContent = "驗證中…";
+
+        try {
+          const r = redeemCodeLocal(code);
+          const exp = extendSub(r.days);
+
+          dom.subMsg.textContent = `✅ 已啟用 ${r.days} 天（至 ${formatDate(exp)}）${r.gm ? " GM" : ""}`;
+          renderSubUI();
+          setTimeout(closeSubModal, 600);
+        } catch (e) {
+          dom.subMsg.textContent = `❌ ${e.message}`;
+        } finally {
+          dom.activateSubBtn.disabled = false;
+        }
+      }
+      }
+
+      const cancelSubscriptionLocal = () => {
+        storage.clearExpire();
+        dom.subMsg.textContent = "已取消（本機）訂閱狀態。";
+        renderSubUI();
+      };
+
+      // ----- Original features (Tarot/Omikuji/Jiao/Villain) -----
+      const tarotData = [
+        { name: "0. 漫步的貓 (The Fool)", love: "新開始，保持好奇。", love_rev: "衝動與分心，先穩住。", work: "新開始，保持好奇。", work_rev: "衝動與分心，先穩住。", fortune: "新開始，保持好奇。", fortune_rev: "衝動與分心，先穩住。" },
+        { name: "I. 專注的貓 (The Magician)", love: "你有能力啟動。", love_rev: "資源分散，別被話術帶走。", work: "你有能力啟動。", work_rev: "資源分散，別被話術帶走。", fortune: "你有能力啟動。", fortune_rev: "資源分散，別被話術帶走。" },
+        { name: "II. 靜坐的貓 (The High Priestess)", love: "直覺很準，先聽內心。", love_rev: "過度猜測，回到事實。", work: "直覺很準，先聽內心。", work_rev: "過度猜測，回到事實。", fortune: "直覺很準，先聽內心。", fortune_rev: "過度猜測，回到事實。" },
+        { name: "III. 被圍繞的貓 (The Empress)", love: "滋養與被愛。", love_rev: "過度付出，先照顧自己。", work: "滋養與被愛。", work_rev: "過度付出，先照顧自己。", fortune: "滋養與被愛。", fortune_rev: "過度付出，先照顧自己。" },
+        { name: "IV. 佔位的貓 (The Emperor)", love: "界線清楚，事情會穩。", love_rev: "控制欲上來，記得柔軟。", work: "界線清楚，事情會穩。", work_rev: "控制欲上來，記得柔軟。", fortune: "界線清楚，事情會穩。", fortune_rev: "控制欲上來，記得柔軟。" },
+        { name: "V. 老貓 (The Hierophant)", love: "傳統與指引。", love_rev: "被規則綁住，允許更新。", work: "傳統與指引。", work_rev: "被規則綁住，允許更新。", fortune: "傳統與指引。", fortune_rev: "被規則綁住，允許更新。" },
+        { name: "VI. 靠近的兩貓 (The Lovers)", love: "舒服的連結。", love_rev: "價值衝突，需誠實選擇。", work: "舒服的連結。", work_rev: "價值衝突，需誠實選擇。", fortune: "舒服的連結。", fortune_rev: "價值衝突，需誠實選擇。" },
+        { name: "VII. 向前的貓 (The Chariot)", love: "推進與勝利。", love_rev: "用力過猛，先校準方向。", work: "推進與勝利。", work_rev: "用力過猛，先校準方向。", fortune: "推進與勝利。", fortune_rev: "用力過猛，先校準方向。" },
+        { name: "VIII. 溫柔的貓 (Strength)", love: "以柔克剛。", love_rev: "情緒拉扯，先安撫自己。", work: "以柔克剛。", work_rev: "情緒拉扯，先安撫自己。", fortune: "以柔克剛。", fortune_rev: "情緒拉扯，先安撫自己。" },
+        { name: "IX. 夜行的貓 (The Hermit)", love: "獨處整理。", love_rev: "逃避人群，別把門關死。", work: "獨處整理。", work_rev: "逃避人群，別把門關死。", fortune: "獨處整理。", fortune_rev: "逃避人群，別把門關死。" },
+        { name: "X. 轉圈的貓玩具 (Wheel of Fortune)", love: "轉機出現。", love_rev: "重複舊循環，先覺察。", work: "轉機出現。", work_rev: "重複舊循環，先覺察。", fortune: "轉機出現。", fortune_rev: "重複舊循環，先覺察。" },
+        { name: "XI. 觀察的貓 (Justice)", love: "回到平衡。", love_rev: "不公平感強，先看證據。", work: "回到平衡。", work_rev: "不公平感強，先看證據。", fortune: "回到平衡。", fortune_rev: "不公平感強，先看證據。" },
+        { name: "XII. 翻身的貓 (The Hanged Man)", love: "換角度，先停。", love_rev: "僵持不動，試著放手。", work: "換角度，先停。", work_rev: "僵持不動，試著放手。", fortune: "換角度，先停。", fortune_rev: "僵持不動，試著放手。" },
+        { name: "XIII. 換季的貓 (Death)", love: "結束帶來重生。", love_rev: "捨不得放，拖延更痛。", work: "結束帶來重生。", work_rev: "捨不得放，拖延更痛。", fortune: "結束帶來重生。", fortune_rev: "捨不得放，拖延更痛。" },
+        { name: "XIV. 慢慢走的貓 (Temperance)", love: "調和復原。", love_rev: "節奏失衡，先減量。", work: "調和復原。", work_rev: "節奏失衡，先減量。", fortune: "調和復原。", fortune_rev: "節奏失衡，先減量。" },
+        { name: "XV. 被線纏住的貓 (The Devil)", love: "依附與習慣。", love_rev: "正在鬆綁，重拿主導。", work: "依附與習慣。", work_rev: "正在鬆綁，重拿主導。", fortune: "依附與習慣。", fortune_rev: "正在鬆綁，重拿主導。" },
+        { name: "XVI. 跳開的貓 (The Tower)", love: "真相震盪。", love_rev: "延後爆炸，盡快處理。", work: "真相震盪。", work_rev: "延後爆炸，盡快處理。", fortune: "真相震盪。", fortune_rev: "延後爆炸，盡快處理。" },
+        { name: "XVII. 仰望的貓 (The Star)", love: "希望與療癒。", love_rev: "期望過高，回到當下。", work: "希望與療癒。", work_rev: "期望過高，回到當下。", fortune: "希望與療癒。", fortune_rev: "期望過高，回到當下。" },
+        { name: "XVIII. 影子裡的貓 (The Moon)", love: "不安與迷霧。", love_rev: "疑慮散去，真相浮現。", work: "不安與迷霧。", work_rev: "疑慮散去，真相浮現。", fortune: "不安與迷霧。", fortune_rev: "疑慮散去，真相浮現。" },
+        { name: "XIX. 曬太陽的貓 (The Sun)", love: "喜悅與明朗。", love_rev: "短暫低潮，能量會回來。", work: "喜悅與明朗。", work_rev: "短暫低潮，能量會回來。", fortune: "喜悅與明朗。", fortune_rev: "短暫低潮，能量會回來。" },
+        { name: "XX. 回頭的貓 (Judgement)", love: "覺醒與召喚。", love_rev: "逃避責任，停滯不前。", work: "覺醒與召喚。", work_rev: "逃避責任，停滯不前。", fortune: "覺醒與召喚。", fortune_rev: "逃避責任，停滯不前。" },
+        { name: "XXI. 伸展的貓 (The World)", love: "完成與整合。", love_rev: "差臨門一腳，補齊收尾。", work: "完成與整合。", work_rev: "差臨門一腳，補齊收尾。", fortune: "完成與整合。", fortune_rev: "差臨門一腳，補齊收尾。" }
+      ];
+
+      const handleTarotFlip = () => {
+        if (state.tarotFlipped) return;
+        unlockAudioOnce();
+        safePlay(dom.flipSound);
+
+        const card = pickOne(tarotData);
+        const reversed = Math.random() > 0.5;
+        state.tarotLast = { card, reversed };
+
+        dom.cardName.textContent = card.name;
+        if (reversed) {
+          dom.cardTag.textContent = "逆位"; dom.cardTag.style.background = "#e74c3c";
+          dom.loveText.textContent = card.love_rev;
+          dom.workText.textContent = card.work_rev;
+          dom.fortuneText.textContent = card.fortune_rev;
+          dom.cardFront.classList.add("reversed-img");
+        } else {
+          dom.cardTag.textContent = "正位"; dom.cardTag.style.background = "#27ae60";
+          dom.loveText.textContent = card.love;
+          dom.workText.textContent = card.work;
+          dom.fortuneText.textContent = card.fortune;
+          dom.cardFront.classList.remove("reversed-img");
+        }
+
+        dom.tarotCard.classList.add("is-flipped");
+        state.tarotFlipped = true;
+        setTimeout(() => { dom.tarotResult.style.display = "flex"; }, 850);
+      };
+
+      const resetTarot = () => {
+        state.tarotFlipped = false;
+        state.tarotLast = null;
+        dom.tarotCard.classList.remove("is-flipped");
+        dom.tarotResult.style.display = "none";
+        dom.cardFront.classList.remove("reversed-img");
+        dom.cardName.textContent = "牌名";
+        dom.cardTag.textContent = "";
+        dom.cardTag.style.background = "transparent";
+        dom.loveText.textContent = "";
+        dom.workText.textContent = "";
+        dom.fortuneText.textContent = "";
+      };
+
+      const omikujiList = [
+        {g:"✨ 上上籤", d:"所求之事，如月圓滿。貴人自來，萬事亨通，此乃極佳之兆。"},
+        {g:"🧧 大吉", d:"鴻運當頭，百事無忌。只要心存善念，努力必有驚喜回報。"},
+        {g:"🌱 平安籤", d:"平穩即是福。目前適合靜觀其變，不宜強求，守成待時。"},
+        {g:"🍂 中平", d:"波瀾不驚，日子平淡。雖無大財大運，但求內心安穩。"}
+      ];
+      const drawOmikuji = () => {
+        unlockAudioOnce();
+        safePlay(dom.bellSound);
+        const pick = pickOne(omikujiList);
+        dom.omiResult.style.display = "none";
+        setTimeout(() => {
+          dom.omiResult.style.display = "block";
+          dom.omiGrade.textContent = pick.g;
+          dom.omiDesc.textContent = pick.d;
+        }, 800);
+      };
+
+      const rollJiao = () => {
+        unlockAudioOnce();
+        safePlay(dom.woodSound);
+
+        dom.j1.className = "jiao rolling";
+        dom.j2.className = "jiao rolling";
+        dom.jResultText.textContent = "正在請示喵神…";
+        dom.jResultText.style.color = "#fff";
+
+        setTimeout(() => {
+          const r1 = Math.round(Math.random());
+          const r2 = Math.round(Math.random());
+          dom.j1.className = r1 === 0 ? "jiao flat" : "jiao curved";
+          dom.j2.className = r2 === 0 ? "jiao flat" : "jiao curved";
+
+          if (r1 !== r2) { dom.jResultText.textContent = "【聖杯】✅ 喵神答應了！"; dom.jResultText.style.color="lime"; }
+          else if (r1 === 0) { dom.jResultText.textContent = "【笑杯】😺 喵神在笑：請再說清楚一點。"; dom.jResultText.style.color="yellow"; }
+          else { dom.jResultText.textContent = "【陰杯】❌ 喵神不同意，或時機未到。"; dom.jResultText.style.color="red"; }
+        }, 800);
+      };
+
+      const chants = [
+        "拍走煩惱，讓心慢慢回到安全感。",
+        "拍走內耗，留一點力氣給自己。",
+        "拍走焦慮，先呼吸，再決定。",
+        "拍完就停，貓掌收爪，今天到這裡。"
+      ];
+      const hit = () => {
+        unlockAudioOnce();
+        safePlay(dom.hitSound);
+
+        dom.slipper.classList.remove("slipper-hit");
+        void dom.slipper.offsetWidth;
+        dom.slipper.classList.add("slipper-hit");
+
+        dom.man.style.transform = "translateX(-20px) scaleY(0.8) skewX(20deg)";
+        dom.man.style.filter = "sepia(1) saturate(5) hue-rotate(-50deg)";
+        dom.hitMsg.textContent = pickOne(chants);
+
+        setTimeout(() => {
+          dom.man.style.transform = "translateX(0) scaleY(1) skewX(0)";
+          dom.man.style.filter = "drop-shadow(0 0 10px #000)";
+        }, 150);
+      };
+
+      const openDeepConsult = (contextText) => {
+        const msg = encodeURIComponent(
+          `您好，我剛在喵咪神社使用占卜。\n` +
+          `我想做真人深度解讀：\n${contextText}\n\n` +
+          `（希望你幫我整理關鍵脈絡、行動建議與時間點。）`
+        );
+        window.open(`https://wa.me/60166262464?text=${msg}`, "_blank", "noopener,noreferrer");
+      };
+
+      const bindEvents = () => {
+        ["pointerdown","touchstart","keydown"].forEach((evt) => {
+          window.addEventListener(evt, unlockAudioOnce, { passive: true, once: true });
+        });
+
+        dom.musicBtn.addEventListener("click", () => {
+          state.musicOn = !state.musicOn;
+          dom.musicBtn.textContent = state.musicOn ? "🔊" : "🔇";
+          if (!state.audioUnlocked) return;
+          state.musicOn ? startBgm() : stopBgm();
+        });
+
+        dom.homeBtn.addEventListener("click", () => goTo("home-page"));
+        $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => goTo(btn.getAttribute("data-goto"))));
+
+        dom.subscribeBtn.addEventListener("click", openSubModal);
+        dom.subscribeBtn2.addEventListener("click", openSubModal);
+        dom.openSubModalBtn1.addEventListener("click", openSubModal);
+        dom.openSubModalBtn2.addEventListener("click", openSubModal);
+
+        dom.subModal.addEventListener("click", (e) => { if (e.target === dom.subModal) closeSubModal(); });
+        dom.closeSubBtn.addEventListener("click", closeSubModal);
+        dom.goPayBtn.addEventListener("click", () => window.open(CONFIG.paymentLink, "_blank", "noopener,noreferrer"));
+        dom.activateSubBtn.addEventListener("click", activateSubscriptionByCode);
+        dom.cancelSubBtn.addEventListener("click", cancelSubscriptionLocal);
+
+        dom.tarotTapArea.addEventListener("click", handleTarotFlip);
+        dom.resetTarotBtn.addEventListener("click", resetTarot);
+
+        dom.drawOmikujiBtn.addEventListener("click", drawOmikuji);
+        dom.jBtn.addEventListener("click", rollJiao);
+        dom.hitBtn.addEventListener("click", hit);
+
+        dom.deepConsultBtn.addEventListener("click", () => {
+          const ctx = state.tarotLast
+            ? `塔羅：${state.tarotLast.card.name} / ${state.tarotLast.reversed ? "逆位" : "正位"}`
+            : "塔羅：尚未抽牌";
+          openDeepConsult(ctx);
+        });
+        dom.omiDeepBtn.addEventListener("click", () => openDeepConsult("神社靈籤：我想針對籤意做深度解讀"));
+        dom.divineDeepBtn.addEventListener("click", () => openDeepConsult("廟宇擲筊：我想針對問題做深度整理"));
+      };
+
+      const init = () => {
+        renderDaily();
+        renderSubUI();
+        goTo("home-page");
+        bindEvents();
+      };
+
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+</body>
+</html>
