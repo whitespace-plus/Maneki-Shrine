@@ -120,7 +120,178 @@
       100% { transform: translate(-60px, 60px) rotate(-100deg); opacity: 0; }
     }
     @keyframes adBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  </style>
+.top-status{
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    top: 64px;
+  }
+  .top-status .pill{
+    flex: 1 1 160px;
+    max-width: 100%;
+  }
+  #subscribeBtn{
+    flex: 1 1 100%;
+    width: 100%;
+    margin: 0;
+  }
+
+  .page{
+    justify-content: flex-start;
+    padding-top: 140px;
+    padding-bottom: 90px;
+    position: relative;
+  }
+
+  .wa-float{
+    right: 12px;
+    bottom: 14px;
+    padding: 6px 10px 6px 6px;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
+  .wa-text{ display:none; }
+}
+/* Top status: move to top-left, compact, allow wrap, reduce visual weight */
+  .top-status{
+    left: 12px;
+    transform: none;
+    top: 72px;
+    width: min(74vw, 360px);
+    max-width: calc(100vw - 24px);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(212,175,55,0.45);
+    backdrop-filter: blur(6px);
+    z-index: 999;
+  }
+  .top-status .pill{
+    width: 100%;
+    padding: 6px 8px;
+  }
+  .top-status .pill b{
+    font-size: 12px;
+  }
+  .top-status .pill span{
+    font-size: 12px;
+  }
+
+  /* Hide the fixed header subscribe button on mobile to avoid blocking content.
+     Users can subscribe via the Home page big button (#subscribeBtn2). */
+  #subscribeBtn{ display: none !important; }
+
+  /* Prevent main content from being covered by fixed header + floating CTA */
+  .page{
+    justify-content: flex-start;
+    padding-top: 140px;
+    padding-bottom: 90px;
+    position: relative;
+  }
+
+  /* Shrink WhatsApp floating button on phones */
+  .wa-float{
+    right: 12px;
+    bottom: 14px;
+    padding: 6px 10px 6px 6px;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
+  .wa-text{ display:none; }
+}
+
+
+/* ===============================
+   ✅ Mobile responsive fixes (added v3)
+   - Make top status bar COLLAPSIBLE and minimized by default on phones
+   - Tap the status card to expand/collapse
+================================ */
+@media (max-width: 480px){
+  /* Buttons: near full width on phones */
+  .menu-btn{
+    width: min(92vw, 360px);
+    max-width: 360px;
+  }
+
+  /* Top status: compact card, minimized by default */
+  .top-status{
+    left: 12px;
+    transform: none;
+    top: 72px;
+    width: min(62vw, 300px);
+    max-width: calc(100vw - 24px);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(212,175,55,0.40);
+    backdrop-filter: blur(6px);
+    z-index: 999;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    /* collapse behavior */
+    overflow: hidden;
+    max-height: 44px; /* minimized height */
+    transition: max-height .25s ease, background .25s ease, border-color .25s ease;
+  }
+
+  /* When expanded */
+  .top-status.is-open{
+    max-height: 220px;
+    background: rgba(0,0,0,0.35);
+    border-color: rgba(212,175,55,0.55);
+  }
+
+  .top-status .pill{
+    width: 100%;
+    padding: 6px 8px;
+  }
+  .top-status .pill b,
+  .top-status .pill span{
+    font-size: 12px;
+  }
+
+  /* Add a subtle hint text inside top-status (shown only when collapsed) */
+  .top-status::after{
+    content: "點一下查看狀態";
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 2px;
+    display: none;
+  }
+  .top-status:not(.is-open)::after{
+    display: block;
+  }
+
+  /* Hide the fixed header subscribe button on mobile to avoid blocking content.
+     Users can subscribe via the Home page big button (#subscribeBtn2). */
+  #subscribeBtn{ display: none !important; }
+
+  /* Prevent main content from being covered by fixed header + floating CTA */
+  .page{
+    justify-content: flex-start;
+    padding-top: 140px;
+    padding-bottom: 90px;
+    position: relative;
+  }
+
+  /* Shrink WhatsApp floating button on phones */
+  .wa-float{
+    right: 12px;
+    bottom: 14px;
+    padding: 6px 10px 6px 6px;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
+  .wa-text{ display:none; }
+}
+</style>
 </head>
 <body>
 
@@ -282,7 +453,7 @@
   <div id="villain-page" class="page">
     <h2 style="color:var(--danger)">🐾 打小人（貓掌版）</h2>
     <div class="villain-stage">
-      <div id="slipper">👡</div>
+      <div id="slipper">🐾</div>
       <div id="pMan">🧍</div>
     </div>
     <h3 id="hitMsg" style="height:30px; color:var(--danger); margin-top: 20px;">點擊下方按鈕開始拍走煩惱</h3>
@@ -622,9 +793,6 @@
         dom.payLinkText.textContent = CONFIG.paymentLink;
       };
       const closeSubModal = () => dom.subModal.classList.remove("show");
-        return data; // { ok:true, expireAt, days }
-      }
-
       
       async function activateSubscriptionByCode() {
         const code = (dom.subCodeInput.value || "").trim();
@@ -645,7 +813,6 @@
         } finally {
           dom.activateSubBtn.disabled = false;
         }
-      }
       }
 
       const cancelSubscriptionLocal = () => {
@@ -796,7 +963,8 @@
       };
 
       const bindEvents = () => {
-        ["pointerdown","touchstart","keydown"].forEach((evt) => {
+        
+["pointerdown","touchstart","keydown"].forEach((evt) => {
           window.addEventListener(evt, unlockAudioOnce, { passive: true, once: true });
         });
 
@@ -836,6 +1004,18 @@
         });
         dom.omiDeepBtn.addEventListener("click", () => openDeepConsult("神社靈籤：我想針對籤意做深度解讀"));
         dom.divineDeepBtn.addEventListener("click", () => openDeepConsult("廟宇擲筊：我想針對問題做深度整理"));
+
+// Mobile: tap the top status bar to expand/collapse (less obstructive)
+const topStatus = document.querySelector(".top-status");
+if (topStatus){
+  topStatus.addEventListener("click", () => {
+    if (window.matchMedia("(max-width: 480px)").matches){
+      topStatus.classList.toggle("is-open");
+    }
+  });
+}
+
+
       };
 
       const init = () => {
